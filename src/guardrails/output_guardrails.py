@@ -50,8 +50,12 @@ def content_filter(response: str) -> dict:
         "phone": r"(\+84|0)[3|5|7|8|9][0-9]{8}",              # SĐT Việt Nam
         "email": r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+",  # Email
         "cccd": r"\b(0[0-9]{2}[0-9]{1}[0-9]{2}[0-9]{5})\b",    # Số CCCD 12 số cơ bản
-        "secret_key": r"sk-[a-zA-Z0-9]{20,}",                 # Chuỗi kiểu sk-...
-        "password": r"(?i)(password|mat\s*khau)\s*[:=]\s*\S+"  # Cụm mật khẩu
+        "secret_key": r"\bsk-[a-zA-Z0-9-]{8,}",              # Chuỗi kiểu sk-...
+        "credential": (                                          # Cụm "xxx is/=/: yyy"
+            r"(?i)\b(?:password|passwd|pass|mat\s*khau|mat\s*khau|api[\s_-]*key|"
+            r"secret|token|credential)\b\s*(?:is|are|=|:)\s*\S+"
+        ),
+        "hardcoded_password": r"(?i)\badmin\d{2,}\b",            # Mật khẩu lab hardcode
     }
 
     for name, pattern in PII_PATTERNS.items():

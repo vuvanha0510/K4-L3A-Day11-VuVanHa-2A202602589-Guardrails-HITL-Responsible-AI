@@ -54,7 +54,13 @@ def detect_injection(user_input: str) -> InputStatus:
     INJECTION_PATTERNS = [
         # TODO: Add at least 5 regex patterns
         # Example:
-        # r"ignore (all )?(previous|above) instructions",
+        r"ignore (all )?(previous|above) instructions",
+        r"you are now",
+        r"system prompt",
+        r"reveal your (instructions|prompt)",
+        r"pretend you are",
+        r"act as (a |an )?unrestricted",
+        r"Ignore\u200b all previous instructions"
     ]
 
     for pattern in INJECTION_PATTERNS:
@@ -84,14 +90,26 @@ def topic_filter(user_input: str) -> InputStatus:
         ``"BLOCK"`` = chặn (off-topic hoặc topic cấm).
         ``"ALLOW"`` = cho qua (câu banking hợp lệ).
     """
+    if not user_input or not user_input.strip():
+        return "BLOCK"  # Hoặc "ALLOW" tùy nghiệp vụ, nhưng chuỗi rỗng nên chặn hoặc xử lý riêng
+
     input_lower = user_input.lower()
 
-    # TODO: Implement logic:
-    # 1. If input contains any blocked topic -> return "BLOCK"
-    # 2. If input doesn't contain any allowed topic -> return "BLOCK"
-    # 3. Otherwise -> return "ALLOW"
-
-    pass  # Replace with your implementation
+    try:
+        # 1. Kiểm tra topic bị cấm (ưu tiên chặn trước)
+        if any(blocked_topic.lower() in input_lower for blocked_topic in BLOCKED_TOPICS):
+            return "BLOCK"
+        
+        # 2. Kiểm tra xem có thuộc danh sách topic cho phép hay không
+        if not any(allowed_topic.lower() in input_lower for allowed_topic in ALLOWED_TOPICS):
+            return "BLOCK"
+            
+        # 3. Hợp lệ -> cho qua
+        return "ALLOW"
+        
+    except NameError:
+        # Phòng hứa trường hợp config chưa được import
+        return "BLOCK"
 
 
 # ============================================================
@@ -147,11 +165,20 @@ class InputGuardrailPlugin(base_plugin.BasePlugin):
         # TODO: Implement logic:
         # 1. Call detect_injection(text)
         #    - If "BLOCK": increment blocked_count, return self._block_response("...")
+        injection_result = detect_injection(text)
+        if injection_result == "BLOCK":
+            self.blocked_count += 1
+            return self._block_response("Your message contains potentially harmful content.")
+
         # 2. Call topic_filter(text)
         #    - If "BLOCK": increment blocked_count, return self._block_response("...")
-        # 3. If both return "ALLOW": return None (let message through)
+        topic_result = topic_filter(text)
+        if topic_result == "BLOCK":
+            self.blocked_count += 1
+            return self._block_response("Your message touches on topics that are not allowed.")
 
-        pass  # Replace with your implementation
+        # 3. If both return "ALLOW": return None (let message through)
+        return None  # Replace with your implementation
 
 
 # ============================================================

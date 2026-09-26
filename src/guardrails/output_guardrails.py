@@ -47,6 +47,11 @@ def content_filter(response: str) -> dict:
         # - National ID (CMND/CCCD): r"\b\d{9}\b|\b\d{12}\b"
         # - API key pattern: r"sk-[a-zA-Z0-9-]+"
         # - Password pattern: r"password\s*[:=]\s*\S+"
+        "phone": r"(\+84|0)[3|5|7|8|9][0-9]{8}",              # SĐT Việt Nam
+        "email": r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+",  # Email
+        "cccd": r"\b(0[0-9]{2}[0-9]{1}[0-9]{2}[0-9]{5})\b",    # Số CCCD 12 số cơ bản
+        "secret_key": r"sk-[a-zA-Z0-9]{20,}",                 # Chuỗi kiểu sk-...
+        "password": r"(?i)(password|mat\s*khau)\s*[:=]\s*\S+"  # Cụm mật khẩu
     }
 
     for name, pattern in PII_PATTERNS.items():
@@ -176,11 +181,31 @@ class OutputGuardrailPlugin(base_plugin.BasePlugin):
         # 1. Call content_filter(response_text)
         #    - If issues found: replace llm_response.content with redacted version
         #    - Increment self.redacted_count
+        content_result = content_filter(response_text)
+        if not content_result["safe"]:
+            self.redacted_count += 1
+            redacted_text = content_result["redacted"]
+            llm_response.content = types.Content(
+                role="model",
+                parts=[types.Part.from_text(text=redacted_text)],
+            )
         # 2. If use_llm_judge: call llm_safety_check(response_text)
         #    - If unsafe: replace llm_response.content with a safe message
         #    - Increment self.blocked_count
+        if self.use_llm_judge:
+            judge_result = await llm_safety_check(response_text)
+            if not judge_result["safe"]:
+                self.blocked_count += 1
+                safe_message = (
+                    "The response was blocked due to safety concerns. "
+                    "Please contact support for assistance."
+                )
+                llm_response.content = types.Content(
+                    role="model",
+                    parts=[types.Part.from_text(text=safe_message)],
+                )
         # 3. Return llm_response (possibly modified)
-
+        
         return llm_response  # TODO: modify if needed
 
 

@@ -119,9 +119,17 @@ create_protected_agent = create_blue_agent
 
 
 async def test_agent(agent, runner):
-    """Quick smoke: one banking question."""
+    """Quick smoke: one banking question.
+
+    Không làm sập Checkpoint nếu provider lỗi (503/429 sau hết số lần retry).
+    """
     print("\n--- Quick test ---")
-    text, _ = await chat_with_agent(
-        agent, runner, "What is the current savings interest rate at VinBank?"
-    )
+    try:
+        text, _ = await chat_with_agent(
+            agent, runner, "What is the current savings interest rate at VinBank?"
+        )
+    except Exception as e:  # noqa: BLE001 - smoke test, không chặn phần còn lại
+        print(f"Agent: (lỗi provider — bỏ qua smoke test) {type(e).__name__}: {e}")
+        return None
     print(f"Agent: {text[:400] if text else '(empty)'}")
+    return text

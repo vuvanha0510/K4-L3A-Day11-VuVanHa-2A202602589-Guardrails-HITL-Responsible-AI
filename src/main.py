@@ -139,15 +139,25 @@ async def main(parts=None):
     if parts is None:
         parts = [2, 3, 4]  # Core: CP2 → CP3 → CP4
 
+    runners_by_part = {
+        2: part2_guardrails,
+        3: part3_assignment_suite,
+        4: part4_attacks,
+    }
+
     for part in parts:
-        if part == 2:
-            await part2_guardrails()
-        elif part == 3:
-            await part3_assignment_suite()
-        elif part == 4:
-            await part4_attacks()
-        else:
+        run_part = runners_by_part.get(part)
+        if run_part is None:
             print(f"Unknown part: {part}. Dùng --part 2, 3, hoặc 4.")
+            continue
+        try:
+            await run_part()
+        except Exception as e:  # noqa: BLE001 - một phần lỗi không chặn phần còn lại
+            print(
+                f"\n[Checkpoint {part}] Lỗi provider/tác vụ: "
+                f"{type(e).__name__}: {e}"
+            )
+            print("Bỏ qua phần này và tiếp tục. Thử lại sau nếu là lỗi 503 tạm thời.")
 
     print("\n" + "=" * 60)
     print("Lab 11 complete! Check your results above.")
